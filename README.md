@@ -2,6 +2,10 @@
 
 This is a small example for my future reference on how to create a set of certificates, with a custom authority, that work well in Kafka (and probably any other JVM system) _and_ work well with Go. For more details, please refer to [this](https://mostlymaths.net/2021/09/kafka-ssl-go.html/) post.
 
+![](go-up.png)
+
+![](docker-up.png)
+
 ## What's in here
 
 - A Dockerfile that generates a set of certificates for Kafka and Go's TLS client (`make certs`)
