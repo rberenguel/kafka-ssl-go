@@ -1,0 +1,58 @@
+version: "3"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    hostname: zookeeper
+    ports:
+      - 2181:2181
+      - 2182:2182
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_SECURE_CLIENT_PORT: 2182
+      ZOOKEEPER_SERVER_CNXN_FACTORY: org.apache.zookeeper.server.NettyServerCnxnFactory
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    hostname: kafka
+    ports:
+      - 9093:9093
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--list", "--zookeeper", "zookeeper:2181"]
+      interval: 30s
+      timeout: 30s
+      retries: 5
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka:19093,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:SSL,LISTENER_DOCKER_EXTERNAL:SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_SSL_CLIENT_ENABLE: "false"
+      KAFKA_BROKER_ID: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/certs/kafka.broker.keystore.jks
+      KAFKA_SSL_KEYSTORE_PASSWORD: very_secure
+      KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+      KAFKA_SSL_TRUSTSTORE_LOCATION: /etc/kafka/certs/kafka.broker.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_PASSWORD: very_secure
+      KAFKA_SSL_TRUSTSTORE_TYPE: JKS
+      KAFKA_ZOOKEEPER_TLS_VERIFY_HOSTNAME: "false"
+      KAFKA_SSL_CLIENT_AUTH: "requested"
+      KAFKA_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: ""
+      # Uncomment to debug SSL issues
+      # KAFKA_OPTS: -Djavax.net.debug=ssl
+    volumes:
+      - ./certs:/etc/kafka/certs
+    depends_on:
+      - zookeeper
+
+  producer:
+    image: golang:1.17
+    command: ["go", "run", ".", "kafka:19093"]
+    working_dir: "/app/go-producer"
+    volumes:
+      - ./:/app
+    depends_on:
+      kafka:
+        condition: service_healthy
